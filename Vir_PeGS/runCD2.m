@@ -1,17 +1,16 @@
 function runCD2_final()
 
-%% ----------------------------------------------------------------------
 % 1. File‑system parameters
-% -----------------------------------------------------------------------
+
 fileParams.topDir      = pwd;           % project root (current folder)
 fileParams.imgDir      = 'result1';     % folder with piece_*.png
 fileParams.imgReg      = 'piece_*.png'; % glob for images
 fileParams.particleDir = 'output';      % centres from dialin
 fileParams.contactDir  = 'contacts';    % where contact files go
 
-%% ----------------------------------------------------------------------
+
 % 2. Load particle_positions.txt produced by preseservePaticleID.m
-% -----------------------------------------------------------------------
+
 particleFile = fullfile(fileParams.topDir,'particle_positions.txt');
 if ~exist(particleFile,'file')
     error('particle_positions.txt not found – run preseservePaticleID.m first');
@@ -19,9 +18,8 @@ end
 particles = readmatrix(particleFile);
 fprintf('Loaded %d particle rows from particle_positions.txt\n',size(particles,1));
 
-%% ----------------------------------------------------------------------
 % 3. Smart edge cleaner: drop any particle that contactDetect cannot crop
-% -----------------------------------------------------------------------
+
 CR = 10;          % *must* match cdParams.CR below
 fprintf('Running edge cleaner (margin = radius + %d px) …\n',CR);
 
@@ -67,9 +65,9 @@ copyfile(particleFile,backupFile);
 writematrix(cleanedParticles,particleFile);
 fprintf('Wrote cleaned particle list; backup saved to\n   %s\n',backupFile);
 
-%% ----------------------------------------------------------------------
+
 % 4. Parameters for contactDetect
-% -----------------------------------------------------------------------
+
 cdParams = struct();
 cdParams.metersperpixel       = 0.007/160;  % your calibration
 cdParams.fsigma               = 140;        % PE stress coefficient
@@ -81,9 +79,9 @@ cdParams.imadjust_limits      = [0 0.65];   % contrast stretch for green ch.
 cdParams.rednormal            = 2;          % red‑leak subtraction factor
 cdParams.figverbose           = true;       % show figures & save JPGs
 
-%% ----------------------------------------------------------------------
+
 % 5. Launch contactDetect (unchanged)
-% -----------------------------------------------------------------------
+
 fprintf('Calling contactDetect …\n');
 try
     contactDetect(fileParams,cdParams,true);   % true = verbose wrapper
@@ -95,5 +93,5 @@ end
 
 end  % function runCD2_final
 
-%MAKE SURE TO CHANGE THE EXTENSION OF THE .png s to . mat s before you run
-%master
+%MAKE SURE TO CHANGE THE EXTENSION OF THE .png s to . mat s before you run master
+
