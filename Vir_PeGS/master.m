@@ -1,22 +1,18 @@
 % forceChainViewer.m
-% -------------------------------------------------------------------------
+
 % Builds a GLOBAL force‑chain graph from *_contacts.mat files and lets you
 % inspect whether two particles are connected across images.
-% -------------------------------------------------------------------------
-% HOW TO USE (simplest):
+
+% HOW TO USE:
 %   1. Be in the project root that contains the /contacts folder.
 %   2. Run   >> forceChainViewer
-%      • A figure pops up colouring connected components.
-%      • Variable G (MATLAB graph) is exported to your workspace.
-%      • You are prompted in the Command Window to type two IDs, e.g.  [8 30]
-%        Press Enter on a blank line to quit.
-%   3. At any later time you can do:
-%         load force_chain_graph.mat    % brings G back
-%         [tf,path] = isConnected(G,13,1);
-% -------------------------------------------------------------------------
+%       e.g.  [8 30]
+%       Press Enter on a blank line to quit.
+
+
 
 function forceChainViewer()
-    %% Configuration ------------------------------------------------------
+    %% Config
     topDir      = pwd;                 % run from project root
     contactsDir = fullfile(topDir,'contacts');
     files = dir(fullfile(contactsDir,'*.mat'));
@@ -24,7 +20,7 @@ function forceChainViewer()
         error('No *_contacts.mat files found in %s. Run contactDetect first.',contactsDir);
     end
 
-    %% Build edge list ----------------------------------------------------
+    %% Build edge list 
     fprintf('Building force‑chain graph from %d contact files...\n', numel(files));
     edges = [];        % [idA idB]
     ids   = [];        % collect all IDs
@@ -48,7 +44,7 @@ function forceChainViewer()
     edges = sort(edges,2);
     edges = unique(edges,'rows');
 
-    %% Construct graph ----------------------------------------------------
+    %% Construct graph 
     uniqueIDs = unique([ids; edges(:)]);
     nodeNames = strtrim(cellstr(num2str(uniqueIDs)));   % remove leading spaces
 
@@ -60,12 +56,12 @@ function forceChainViewer()
     G = graph(src, dst, [], nodeNames);
     fprintf('Graph has %d nodes and %d edges.\n', numnodes(G), numedges(G));
 
-    %% Save & export ------------------------------------------------------
+    %% Save 
     save('force_chain_graph.mat','G');
     assignin('base','G',G);   % make available to caller workspace
     fprintf('Saved graph to force_chain_graph.mat and exported variable G to workspace.\n');
 
-    %% Visualise ----------------------------------------------------------
+    %% Viz
     figure('Name','Force‑chain connectivity','Color','w');
     comps = conncomp(G);
     plot(G,'MarkerSize',6,'NodeCData',comps,'EdgeAlpha',0.5,'NodeLabel',[]);
@@ -73,7 +69,7 @@ function forceChainViewer()
     title('Force‑chain components across all images');
     axis equal off;
 
-    %% Interactive query loop --------------------------------------------
+    %% Interactive query loop
     disp('Enter two particle IDs as a row vector like [8 30] to test connectivity.');
     disp('Press Enter on a blank line to quit.');
     while true
@@ -82,7 +78,7 @@ function forceChainViewer()
             break;         % user pressed Enter
         end
         if numel(idsIn) ~= 2 || ~isnumeric(idsIn)
-            disp('⚠️  Please enter exactly two numeric IDs, e.g. [13 1]');
+            disp(' Please enter exactly two numeric IDs, e.g. [13 1]');
             continue;
         end
         try
