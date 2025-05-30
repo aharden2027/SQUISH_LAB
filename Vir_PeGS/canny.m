@@ -1,18 +1,18 @@
-%%% tracks particles across images IMPROVES TEsT 7 LOVEEE
+%%% tracks particles across images IMPROVES TEsT 7 I LIKE ITT
 %% Create a visualization function for particle matching
-% Define the function at the end of the script
+
 function visualize_particles_on_images(all_images, img_positions, all_centers, particle_ids, img_indices, particle_appearances)
-    % Create a colormap for unique particles
+
     num_unique_particles = max(particle_ids);
     colormap_particles = hsv(num_unique_particles);
     
-    % Create a figure for each image
+
     for img_idx = 1:length(all_images)
         figure('Name', sprintf('Particle Visualization - Image %d (R%d,C%d)', ...
             img_idx, img_positions(img_idx,1)-1, img_positions(img_idx,2)-1), ...
             'Position', [100, 100, 1000, 800]);
         
-        % Display the original image
+
         imshow(all_images{img_idx}); hold on;
         
         % Find particles in this image
@@ -72,7 +72,7 @@ function visualize_particles_on_images(all_images, img_positions, all_centers, p
         title(sprintf('Image %d (R%d,C%d) - Unique Particles Visualization', ...
             img_idx, img_positions(img_idx,1)-1, img_positions(img_idx,2)-1), 'FontSize', 14);
         
-        % Add a small legend explaining the visualization
+
         annotation('textbox', [0.01, 0.01, 0.5, 0.05], 'String', ...
             'Circle colors represent unique particle IDs. Circle thickness shows number of occurrences.', ...
             'EdgeColor', 'none', 'Color', 'white', 'BackgroundColor', [0 0 0 0.7]);
@@ -211,8 +211,8 @@ global DISTANCE_THRESHOLD DISPLAY_FIGURES DEBUG_MODE;
 
 % Set configuration values
 DISTANCE_THRESHOLD = 10; % Maximum distance (in pixels) for particles to be considered the same
-DISPLAY_FIGURES = true;  % Whether to display visualization figures
-DEBUG_MODE = true;       % Whether to show additional debugging information
+DISPLAY_FIGURES = true;  %  display visualization figures?
+DEBUG_MODE = true;       %  show additional debugging information?
 
 %% Step 1: Hardcoded loading of images and particle center files
 % Specify grid dimensions
@@ -310,7 +310,7 @@ if ~isempty(all_centers{idx2})
     scatter(all_centers{idx2}(:,1), all_centers{idx2}(:,2), 30, 'bo');
 end
 
-% Manual selection with improved user experience
+% Manual selection 
 disp('Click anywhere near particles in Image 1 (R0,C0) that also appear in Image 2.');
 disp('The system will automatically find the nearest detected particle to your click.');
 subplot(1,2,1);
@@ -368,7 +368,7 @@ end
 points1_horiz = points1;
 points2_horiz = points2;
 
-% Give users a chance to see their selections
+% Give user a chance to see their selections
 disp('Selected particles are marked with green X. Press any key to continue...');
 pause;
 
@@ -401,7 +401,7 @@ if ~isempty(all_centers{idx2})
     scatter(all_centers{idx2}(:,1), all_centers{idx2}(:,2), 30, 'bo');
 end
 
-% Manual selection with improved user experience
+% Manual selection 
 disp('Click anywhere near particles in Image 1 (R0,C0) that also appear in Image 4 (R1,C0).');
 disp('The system will automatically find the nearest detected particle to your click.');
 subplot(1,2,1);
@@ -538,7 +538,7 @@ h_offsets = h_offsets_matrix;
 v_offsets = v_offsets_matrix;
 
 %% Step 3: Transform all particle centers to a global coordinate system
-% This version FIXES the "shifted right and up" bug by properly ADDING the offsets
+
 
 fprintf('\n--- Global Coordinate Transformation ---\n');
 fprintf('Using horizontal offset: X = %.2f, Y = %.2f\n', mean_h_offset(1), mean_h_offset(2));
@@ -585,7 +585,7 @@ for i = 1:total_images
         end
     end
     
-    % ✅ Apply offset — ADD local coordinates to get global positions
+    % Apply offset — ADD local coordinates to get global positions
     global_centers{i}(:, 1:2) = local_centers(:, 1:2) + cumulative_offset;
     
     % Debug log
