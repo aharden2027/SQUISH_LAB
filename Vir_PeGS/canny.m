@@ -1,207 +1,7 @@
 %%% tracks particles across images IMPROVES TEsT 7 I LIKE ITT
 %% Create a visualization function for particle matching
 
-function visualize_particles_on_images(all_images, img_positions, all_centers, particle_ids, img_indices, particle_appearances)
-
-    num_unique_particles = max(particle_ids);
-    colormap_particles = hsv(num_unique_particles);
-    
-
-    for img_idx = 1:length(all_images)
-        figure('Name', sprintf('Particle Visualization - Image %d (R%d,C%d)', ...
-            img_idx, img_positions(img_idx,1)-1, img_positions(img_idx,2)-1), ...
-            'Position', [100, 100, 1000, 800]);
-        
-
-        imshow(all_images{img_idx}); hold on;
-        
-        % Find particles in this image
-        particle_indices = find(img_indices == img_idx);
-        
-        % Get local coordinates for this image
-        local_centers = all_centers{img_idx};
-        if isempty(local_centers)
-            continue;  % Skip if no centers available
-        end
-        
-        % Display each particle with its unique ID
-        for i = 1:length(particle_indices)
-            global_idx = particle_indices(i);
-            unique_id = particle_ids(global_idx);
-            
-            % Check if i is within bounds of local_centers
-            if i <= size(local_centers, 1)
-                x = local_centers(i, 1);
-                y = local_centers(i, 2);
-                
-                % Get radius if available
-                if size(local_centers, 2) >= 3
-                    radius = local_centers(i, 3);
-                else
-                    radius = 20; % Default radius
-                end
-                
-                % Get number of occurrences for this particle
-                num_occurrences = length(particle_appearances{unique_id});
-                
-                % Choose color based on unique ID
-                color = colormap_particles(unique_id, :);
-                
-                % Draw circle around particle with thickness proportional to occurrences
-                linewidth = min(1 + num_occurrences * 0.5, 5);
-                theta = linspace(0, 2*pi, 100);
-                circle_x = x + radius * cos(theta);
-                circle_y = y + radius * sin(theta);
-                plot(circle_x, circle_y, 'Color', color, 'LineWidth', linewidth);
-                
-                % Add ID label
-                text(x, y, num2str(unique_id), 'Color', 'white', 'FontWeight', 'bold', ...
-                    'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
-                    'FontSize', 10, 'BackgroundColor', [0 0 0 0.5]);
-                
-                % Add smaller label showing which images this particle appears in
-                other_images = particle_appearances{unique_id};
-                other_images_str = sprintf('%d ', other_images);
-                text(x, y + radius + 5, sprintf('In: %s', other_images_str), ...
-                    'Color', 'white', 'FontSize', 8, 'HorizontalAlignment', 'center', ...
-                    'BackgroundColor', [0 0 0 0.5]);
-            end
-        end
-        
-        % Add title and legend
-        title(sprintf('Image %d (R%d,C%d) - Unique Particles Visualization', ...
-            img_idx, img_positions(img_idx,1)-1, img_positions(img_idx,2)-1), 'FontSize', 14);
-        
-
-        annotation('textbox', [0.01, 0.01, 0.5, 0.05], 'String', ...
-            'Circle colors represent unique particle IDs. Circle thickness shows number of occurrences.', ...
-            'EdgeColor', 'none', 'Color', 'white', 'BackgroundColor', [0 0 0 0.7]);
-    end
-    
-    % Create an overall map visualization
-    figure('Name', 'Global Particle Map', 'Position', [200, 200, 1200, 900]);
-    hold on; grid on;
-    
-    % Calculate max width and height for the display
-    max_img_width = max(cellfun(@(x) size(x, 2), all_images));
-    max_img_height = max(cellfun(@(x) size(x, 1), all_images));
-    
-    % Draw grid lines to separate images
-    max_row = max(img_positions(:, 1));
-    max_col = max(img_positions(:, 2));
-    
-    for r = 0:max_row
-        y_pos = r * max_img_height;
-        plot([0, max_col * max_img_width], [y_pos, y_pos], 'k--', 'LineWidth', 1);
-    end
-    
-    for c = 0:max_col
-        x_pos = c * max_img_width;
-        plot([x_pos, x_pos], [0, max_row * max_img_height], 'k--', 'LineWidth', 1);
-    end
-    
-    % Create mapping between particle indexing and local centers
-    % This structure maps from global particle indices to local center indices
-    particle_mapping = zeros(length(img_indices), 2); % [img_idx, local_idx]
-    for i = 1:length(img_indices)
-        img_idx = img_indices(i);
-        
-        % Find how many particles from this image have been processed before this one
-        prev_count = sum(img_indices(1:i-1) == img_idx);
-        
-        % The local index is the count + 1
-        local_idx = prev_count + 1;
-        
-        % Store mapping
-        particle_mapping(i, :) = [img_idx, local_idx];
-    end
-    
-    % Plot each unique particle with connections between occurrences
-    for id = 1:num_unique_particles
-        % Find all occurrences of this particle
-        idx = find(particle_ids == id);
-        
-        % Skip if no occurrences (shouldn't happen)
-        if isempty(idx)
-            continue;
-        end
-        
-        % Get positions in the global reference frame
-        positions = zeros(length(idx), 2);
-        valid_positions = true(length(idx), 1);
-        
-        for i = 1:length(idx)
-            img_idx = particle_mapping(idx(i), 1);
-            local_idx = particle_mapping(idx(i), 2);
-            
-            % Check if center data exists and index is valid
-            if isempty(all_centers{img_idx}) || local_idx > size(all_centers{img_idx}, 1)
-                valid_positions(i) = false;
-                continue;
-            end
-            
-            % Get local coordinates
-            local_coords = all_centers{img_idx}(local_idx, 1:2);
-            
-            % Convert to map coordinates based on grid position
-            row = img_positions(img_idx, 1) - 1;  % 0-based
-            col = img_positions(img_idx, 2) - 1;  % 0-based
-            
-            positions(i, 1) = local_coords(1) + col * max_img_width;
-            positions(i, 2) = local_coords(2) + row * max_img_height;
-        end
-        
-        % Remove invalid positions
-        positions = positions(valid_positions, :);
-        
-        % Skip if no valid positions
-        if isempty(positions)
-            continue;
-        end
-        
-        % Plot each occurrence
-        scatter(positions(:,1), positions(:,2), 100, colormap_particles(id,:), 'filled', 'MarkerEdgeColor', 'k');
-        
-        % Add ID label to one occurrence
-        text(positions(1,1), positions(1,2), num2str(id), 'FontWeight', 'bold', ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Color', 'w');
-        
-        % Connect occurrences with lines
-        if size(positions, 1) > 1
-            for i = 1:size(positions, 1)
-                for j = (i+1):size(positions, 1)
-                    plot([positions(i,1), positions(j,1)], [positions(i,2), positions(j,2)], '--', ...
-                        'Color', colormap_particles(id,:), 'LineWidth', 1.5);
-                end
-            end
-        end
-    end
-    
-    % Set proper axis limits and labels
-    xlim([0, max_col * max_img_width]);
-    ylim([0, max_row * max_img_height]);
-    xlabel('X Coordinate (pixels)', 'FontSize', 12);
-    ylabel('Y Coordinate (pixels)', 'FontSize', 12);
-    title('Global Map of All Unique Particles', 'FontSize', 16);
-    
-    % Add grid labels
-    for r = 0:max_row-1
-        for c = 0:max_col-1
-            x_center = (c + 0.5) * max_img_width;
-            y_center = (r + 0.5) * max_img_height;
-            text(x_center, y_center, sprintf('R%d,C%d', r, c), ...
-                'FontSize', 14, 'HorizontalAlignment', 'center', ...
-                'BackgroundColor', [1 1 1 0.7], 'Margin', 5);
-        end
-    end
-    
-    % Add legend for occurrence count
-    for i = 1:4
-        text(50, 50 + (i-1)*30, sprintf('%d occurrences', i), ...
-            'FontSize', 12, 'Color', 'k', 'BackgroundColor', [1 1 1 0.7], ...
-            'EdgeColor', 'k', 'LineWidth', i*0.5, 'Margin', 5, 'Units', 'pixels');
-    end
-end%% Particle Tracking and Unique Identification System
+%% Particle Tracking and Unique Identification System
 % This code builds on manual_matchv2.m to identify unique particles in a grid of images
 % and track particles that appear in multiple images
 clc; clear; close all;
@@ -892,3 +692,206 @@ fprintf('\nCreating particle visualizations...\n');
 visualize_particles_on_images(all_images, img_positions, all_centers, particle_ids, img_indices, particle_appearances);
 
 fprintf('\nParticle analysis complete!\n');
+
+
+function visualize_particles_on_images(all_images, img_positions, all_centers, particle_ids, img_indices, particle_appearances)
+
+    num_unique_particles = max(particle_ids);
+    colormap_particles = hsv(num_unique_particles);
+    
+
+    for img_idx = 1:length(all_images)
+        figure('Name', sprintf('Particle Visualization - Image %d (R%d,C%d)', ...
+            img_idx, img_positions(img_idx,1)-1, img_positions(img_idx,2)-1), ...
+            'Position', [100, 100, 1000, 800]);
+        
+
+        imshow(all_images{img_idx}); hold on;
+        
+        % Find particles in this image
+        particle_indices = find(img_indices == img_idx);
+        
+        % Get local coordinates for this image
+        local_centers = all_centers{img_idx};
+        if isempty(local_centers)
+            continue;  % Skip if no centers available
+        end
+        
+        % Display each particle with its unique ID
+        for i = 1:length(particle_indices)
+            global_idx = particle_indices(i);
+            unique_id = particle_ids(global_idx);
+            
+            % Check if i is within bounds of local_centers
+            if i <= size(local_centers, 1)
+                x = local_centers(i, 1);
+                y = local_centers(i, 2);
+                
+                % Get radius if available
+                if size(local_centers, 2) >= 3
+                    radius = local_centers(i, 3);
+                else
+                    radius = 20; % Default radius
+                end
+                
+                % Get number of occurrences for this particle
+                num_occurrences = length(particle_appearances{unique_id});
+                
+                % Choose color based on unique ID
+                color = colormap_particles(unique_id, :);
+                
+                % Draw circle around particle with thickness proportional to occurrences
+                linewidth = min(1 + num_occurrences * 0.5, 5);
+                theta = linspace(0, 2*pi, 100);
+                circle_x = x + radius * cos(theta);
+                circle_y = y + radius * sin(theta);
+                plot(circle_x, circle_y, 'Color', color, 'LineWidth', linewidth);
+                
+                % Add ID label
+                text(x, y, num2str(unique_id), 'Color', 'white', 'FontWeight', 'bold', ...
+                    'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', ...
+                    'FontSize', 10, 'BackgroundColor', [0 0 0 0.5]);
+                
+                % Add smaller label showing which images this particle appears in
+                other_images = particle_appearances{unique_id};
+                other_images_str = sprintf('%d ', other_images);
+                text(x, y + radius + 5, sprintf('In: %s', other_images_str), ...
+                    'Color', 'white', 'FontSize', 8, 'HorizontalAlignment', 'center', ...
+                    'BackgroundColor', [0 0 0 0.5]);
+            end
+        end
+        
+        % Add title and legend
+        title(sprintf('Image %d (R%d,C%d) - Unique Particles Visualization', ...
+            img_idx, img_positions(img_idx,1)-1, img_positions(img_idx,2)-1), 'FontSize', 14);
+        
+
+        annotation('textbox', [0.01, 0.01, 0.5, 0.05], 'String', ...
+            'Circle colors represent unique particle IDs. Circle thickness shows number of occurrences.', ...
+            'EdgeColor', 'none', 'Color', 'white', 'BackgroundColor', [0 0 0 0.7]);
+    end
+    
+    % Create an overall map visualization
+    figure('Name', 'Global Particle Map', 'Position', [200, 200, 1200, 900]);
+    hold on; grid on;
+    
+    % Calculate max width and height for the display
+    max_img_width = max(cellfun(@(x) size(x, 2), all_images));
+    max_img_height = max(cellfun(@(x) size(x, 1), all_images));
+    
+    % Draw grid lines to separate images
+    max_row = max(img_positions(:, 1));
+    max_col = max(img_positions(:, 2));
+    
+    for r = 0:max_row
+        y_pos = r * max_img_height;
+        plot([0, max_col * max_img_width], [y_pos, y_pos], 'k--', 'LineWidth', 1);
+    end
+    
+    for c = 0:max_col
+        x_pos = c * max_img_width;
+        plot([x_pos, x_pos], [0, max_row * max_img_height], 'k--', 'LineWidth', 1);
+    end
+    
+    % Create mapping between particle indexing and local centers
+    % This structure maps from global particle indices to local center indices
+    particle_mapping = zeros(length(img_indices), 2); % [img_idx, local_idx]
+    for i = 1:length(img_indices)
+        img_idx = img_indices(i);
+        
+        % Find how many particles from this image have been processed before this one
+        prev_count = sum(img_indices(1:i-1) == img_idx);
+        
+        % The local index is the count + 1
+        local_idx = prev_count + 1;
+        
+        % Store mapping
+        particle_mapping(i, :) = [img_idx, local_idx];
+    end
+    
+    % Plot each unique particle with connections between occurrences
+    for id = 1:num_unique_particles
+        % Find all occurrences of this particle
+        idx = find(particle_ids == id);
+        
+        % Skip if no occurrences (shouldn't happen)
+        if isempty(idx)
+            continue;
+        end
+        
+        % Get positions in the global reference frame
+        positions = zeros(length(idx), 2);
+        valid_positions = true(length(idx), 1);
+        
+        for i = 1:length(idx)
+            img_idx = particle_mapping(idx(i), 1);
+            local_idx = particle_mapping(idx(i), 2);
+            
+            % Check if center data exists and index is valid
+            if isempty(all_centers{img_idx}) || local_idx > size(all_centers{img_idx}, 1)
+                valid_positions(i) = false;
+                continue;
+            end
+            
+            % Get local coordinates
+            local_coords = all_centers{img_idx}(local_idx, 1:2);
+            
+            % Convert to map coordinates based on grid position
+            row = img_positions(img_idx, 1) - 1;  % 0-based
+            col = img_positions(img_idx, 2) - 1;  % 0-based
+            
+            positions(i, 1) = local_coords(1) + col * max_img_width;
+            positions(i, 2) = local_coords(2) + row * max_img_height;
+        end
+        
+        % Remove invalid positions
+        positions = positions(valid_positions, :);
+        
+        % Skip if no valid positions
+        if isempty(positions)
+            continue;
+        end
+        
+        % Plot each occurrence
+        scatter(positions(:,1), positions(:,2), 100, colormap_particles(id,:), 'filled', 'MarkerEdgeColor', 'k');
+        
+        % Add ID label to one occurrence
+        text(positions(1,1), positions(1,2), num2str(id), 'FontWeight', 'bold', ...
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle', 'Color', 'w');
+        
+        % Connect occurrences with lines
+        if size(positions, 1) > 1
+            for i = 1:size(positions, 1)
+                for j = (i+1):size(positions, 1)
+                    plot([positions(i,1), positions(j,1)], [positions(i,2), positions(j,2)], '--', ...
+                        'Color', colormap_particles(id,:), 'LineWidth', 1.5);
+                end
+            end
+        end
+    end
+    
+    % Set proper axis limits and labels
+    xlim([0, max_col * max_img_width]);
+    ylim([0, max_row * max_img_height]);
+    xlabel('X Coordinate (pixels)', 'FontSize', 12);
+    ylabel('Y Coordinate (pixels)', 'FontSize', 12);
+    title('Global Map of All Unique Particles', 'FontSize', 16);
+    
+    % Add grid labels
+    for r = 0:max_row-1
+        for c = 0:max_col-1
+            x_center = (c + 0.5) * max_img_width;
+            y_center = (r + 0.5) * max_img_height;
+            text(x_center, y_center, sprintf('R%d,C%d', r, c), ...
+                'FontSize', 14, 'HorizontalAlignment', 'center', ...
+                'BackgroundColor', [1 1 1 0.7], 'Margin', 5);
+        end
+    end
+    
+    % Add legend for occurrence count
+    for i = 1:4
+        text(50, 50 + (i-1)*30, sprintf('%d occurrences', i), ...
+            'FontSize', 12, 'Color', 'k', 'BackgroundColor', [1 1 1 0.7], ...
+            'EdgeColor', 'k', 'LineWidth', i*0.5, 'Margin', 5, 'Units', 'pixels');
+    end
+end
